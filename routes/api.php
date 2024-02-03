@@ -2,6 +2,10 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\RedirectController;
+use App\Http\Controllers\RedirectLogController;
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +21,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+ 
+Route::apiResources([
+    '/redirects' => RedirectController::class,
+    '/{id}/logs' => RedirectLogController::class
+]);
+
+Route::get('/r/{redirect}', [RedirectController::class, 'redirect']);
+
