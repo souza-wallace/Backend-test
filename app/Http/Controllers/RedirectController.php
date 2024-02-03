@@ -183,4 +183,30 @@ class RedirectController extends Controller
 
         return $response;
     }
+
+    public function stats($id){
+        $redirect = Redirect::with('logs')->find($id);
+    
+        $totalAccesses = $redirect->logs->count();
+        $uniqueIPs = $redirect->logs->pluck('ip')->unique()->count();
+    
+        $topReferrers = $redirect->logs->groupBy('referer')->sortByDesc(function ($referer) {
+            return $referer->count();
+        })->take(5)->keys()->toArray();
+    
+        $last10Days = $redirect->logs->groupBy('created_at')->take(10)->map(function ($dayLogs, $date) {
+            $total = $dayLogs->count();
+            $unique = $dayLogs->pluck('ip')->unique()->count();
+            return ['date' => $date, 'total' => $total, 'unique' => $unique];
+        })->values();
+    
+        $stats = [
+            'totalAccesses' => $totalAccesses,
+            'uniqueIPs' => $uniqueIPs,
+            'topReferrers' => $topReferrers,
+            'last10Days' => $last10Days,
+        ];
+    
+        return $stats;
+    }
 }

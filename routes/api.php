@@ -28,4 +28,5 @@ Route::apiResources([
 ]);
 
 Route::get('/r/{redirect}', [RedirectController::class, 'redirect']);
+Route::get('/redirects/{redirect}/stats', [RedirectController::class, 'stats']);
 
