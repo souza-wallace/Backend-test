@@ -121,7 +121,6 @@ class RedirectController extends Controller
         $urlDestiny = self::generateRedirectUrl($queryParamsRequest, $redirect->url_destiny);
         $code = Hashids::encode($redirect->id, 10);
 
-        // return $code;
         try {
             return RedirectLog::createLog($redirect->id, $code, $data);
         } catch (\Exception $e) {
@@ -145,7 +144,7 @@ class RedirectController extends Controller
         }
 
         $mergedQueryParams = array_merge($queryParamsRequest ?? [], $urlQueryParams);
-        
+
         $urlWithoutQuery = strtok($url_destiny, '?');
         $urlDestiny = $urlWithoutQuery . '?' . http_build_query($mergedQueryParams);
 
@@ -160,17 +159,22 @@ class RedirectController extends Controller
         }
     
         $totalAccesses = $logs->count();
-        $uniqueIPs = $logs->pluck('ip')->unique()->count();
+        $uniqueIPs = $logs->pluck('ip_address')->unique()->count();
     
         $topReferrers = $logs->groupBy('referer')->sortByDesc(function ($referer) {
             return $referer->count();
         })->take(5)->keys()->toArray();
     
-        $last10Days = $logs->groupBy('created_at')->take(10)->map(function ($dayLogs, $date) {
+        $last10Days = $logs->where('created_at', '>=', now()->subDays(10))
+        ->groupBy(function ($log) {
+            return Carbon::parse($log->created_at)->format('Y-m-d');
+        })
+        ->map(function ($dayLogs, $date) {
             $total = $dayLogs->count();
             $unique = $dayLogs->pluck('ip')->unique()->count();
             return ['date' => $date, 'total' => $total, 'unique' => $unique];
-        })->values();
+        })
+        ->values();
     
         $stats = [
             'totalAccesses' => $totalAccesses,

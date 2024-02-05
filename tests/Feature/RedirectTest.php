@@ -12,6 +12,7 @@ use App\Models\RedirectLog;
 use App\Http\Controllers\RedirectController;
 
 use Tests\TestCase;
+use Carbon\Carbon;
 
 use DatabaseMigrations;
 
@@ -44,7 +45,7 @@ class RedirectTest extends TestCase
     public function test_referer_headers_are_counted_correctly()
     {
         $redirect = Redirect::factory()->create();
-        $code = HashIds::encode($redirect->code);
+        $code = HashIds::encode($redirect->id);
 
         $referer1 = 'https://www.example.com/page1';
         $referer2 = 'https://www.example.com/page2';
@@ -53,7 +54,7 @@ class RedirectTest extends TestCase
         RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'redirect_code' => $code, 'referer' => $referer1]);
         RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'redirect_code' => $code, 'referer' => $referer2]);
 
-        $response = $this->get('/api/redirects/' . HashIds::encode($redirect->code) . '/stats');
+        $response = $this->get('/api/redirects/' . $code . '/stats');
         $response->assertJson([
             'totalAccesses' => 3,
             'topReferrers' => [$referer1, $referer2],
@@ -82,4 +83,69 @@ class RedirectTest extends TestCase
         $this->assertEquals($expectedUrl, $resultUrl);
     }
 
-}
+    public function test_generate_redirect_url_with_priority()
+    {
+        $urlDestiny = 'https://example.com/redirect?utm_source=facebook&utm_campaign=ads';
+        $requestQueryParams = ['utm_source' => 'instagram'];
+
+        $resultUrl = RedirectController::generateRedirectUrl($requestQueryParams, $urlDestiny);
+
+        $expectedUrl = 'https://example.com/redirect?utm_source=instagram&utm_campaign=ads';
+        $this->assertEquals($expectedUrl, $resultUrl);
+    }
+
+    public function test_last_10_days_stats()
+    {
+        $redirect = Redirect::factory()->create();
+        $code = HashIds::encode($redirect->id, 10);
+    
+        $log = RedirectLog::factory()->create([
+            'redirect_id' => $redirect->id,
+            'redirect_code' => $code,
+            'created_at' => Carbon::now()->subDays(rand(1,9)),
+        ]);
+    
+        $response = $this->get('/api/redirects/'.$code.'/stats');
+
+        $logsCount = count($response->json()['last10Days']);
+
+        $this->assertEquals(1, $logsCount, 'A contagem de logs dos ultimos 10 dias deve ser igual a 1');
+    }
+
+    public function test_last_10_days_stats_no_access()
+    {
+        $redirect = Redirect::factory()->create();
+        $code = HashIds::encode($redirect->id, 10);
+
+        $response = $this->get('/api/redirects/'.$code.'/stats');
+        
+        $response->assertStatus(200);
+
+        $this->assertEmpty($response->json()['last10Days'], 'O array de logs dos últimos 10 dias deve estar vazio');
+    }
+
+    public function test_last_10_days_stats_with_old_logs()
+    {
+        $redirect = Redirect::factory()->create();
+        $code = HashIds::encode($redirect->id, 10);
+
+        RedirectLog::factory()->count(3)->create([
+            'redirect_id' => $redirect->id,
+            'redirect_code' => $code,
+            'created_at' => Carbon::now()->subDays(rand(15, 30)), // Data superior a 10 dias atrás
+        ]);
+
+        RedirectLog::factory()->create([
+            'redirect_id' => $redirect->id,
+            'redirect_code' => $code,
+            'created_at' => Carbon::now()->subDays(9), // Data dentro dos últimos 10 dias
+        ]); 
+
+        $response = $this->get('/api/redirects/'.$code.'/stats');
+
+        $logsCount = count($response->json()['last10Days']);
+
+        $this->assertEquals(1, $logsCount, 'A contagem de logs dos ultimos 10 dias deve ser igual a 1');
+    }
+}   
+

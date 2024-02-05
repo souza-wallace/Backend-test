@@ -23,7 +23,7 @@ class Redirect extends Model
             if (!$redirect->id) {
                 $redirect->id = static::max('id') + 1;
             }
-            $redirect->code = Hashids::encode($redirect->id, rand(0, 10));
+            $redirect->code = Hashids::encode($redirect->id, 10);
         });
     }
 
