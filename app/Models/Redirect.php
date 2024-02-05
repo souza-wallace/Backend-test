@@ -11,24 +11,26 @@ class Redirect extends Model
 {
     use HasFactory;
     use SoftDeletes;
-
-
     protected $fillable = ['code'];
     protected $primaryKey = 'code';
     protected $dates = ['deleted_at'];
-
 
     protected static function boot()
     {
         parent::boot();
 
-        static::created(function ($redirect) {
-            $redirect->update(['code' => Hashids::encode($redirect->id, 10)]);
+        static::creating(function ($redirect) {
+            if (!$redirect->id) {
+                $redirect->id = static::max('id') + 1;
+            }
+            $redirect->code = Hashids::encode($redirect->id, rand(0, 10));
         });
     }
 
-    public function redirectLogs()
-    {
-        return $this->hasMany(RedirectLog::class);
-    }
+    // public function logs()
+    // {
+    //     return $this->hasMany(RedirectLog::class);
+    //     return $this->hasMany(RedirectLog::class, 'code', 'code');
+
+    // }
 }
