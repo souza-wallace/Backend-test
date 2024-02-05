@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('redirect_id');
             $table->foreign('redirect_id')->references('id')->on('redirects')->onDelete('cascade');
+            $table->string('redirect_code')->nullable();
             $table->ipAddress('ip_address')->nullable();
             $table->string('user_agent')->nullable();
             $table->string('referer')->nullable();
