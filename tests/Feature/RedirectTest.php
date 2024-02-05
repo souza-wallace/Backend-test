@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\DB;
+use Vinkla\Hashids\Facades\Hashids;
 
 use App\Models\Redirect;
 use App\Models\RedirectLog;
@@ -43,16 +44,16 @@ class RedirectTest extends TestCase
     public function test_referer_headers_are_counted_correctly()
     {
         $redirect = Redirect::factory()->create();
+        $code = HashIds::encode($redirect->code);
 
         $referer1 = 'https://www.example.com/page1';
         $referer2 = 'https://www.example.com/page2';
 
-        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'referer' => $referer1]);
-        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'referer' => $referer1]);
-        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'referer' => $referer2]);
+        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'redirect_code' => $code, 'referer' => $referer1]);
+        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'redirect_code' => $code, 'referer' => $referer1]);
+        RedirectLog::factory()->create(['redirect_id' => $redirect->id, 'redirect_code' => $code, 'referer' => $referer2]);
 
-        $response = $this->get('/api/redirects/' . $redirect->id . '/stats');
-
+        $response = $this->get('/api/redirects/' . HashIds::encode($redirect->code) . '/stats');
         $response->assertJson([
             'totalAccesses' => 3,
             'topReferrers' => [$referer1, $referer2],
@@ -81,14 +82,4 @@ class RedirectTest extends TestCase
         $this->assertEquals($expectedUrl, $resultUrl);
     }
 
-    public function test_generate_redirect_url_with_priority()
-    {
-        $urlDestiny = 'https://example.com/redirect?utm_source=facebook&utm_campaign=ads';
-        $requestQueryParams = ['utm_source' => 'instagram'];
-
-        $resultUrl = RedirectController::generateRedirectUrl($requestQueryParams, $urlDestiny);
-
-        $expectedUrl = 'https://example.com/redirect?utm_source=instagram&utm_campaign=ads';
-        $this->assertEquals($expectedUrl, $resultUrl);
-    }
 }

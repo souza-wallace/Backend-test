@@ -153,7 +153,7 @@ class RedirectController extends Controller
     }
 
     public function stats($code){
-        $logs = RedirectLog::where('code', $code)->get();
+        $logs = RedirectLog::where('redirect_code', $code)->get();
 
         if (!$logs) {
             return response()->json(['error' => 'Redirect Log not found'], 404);
